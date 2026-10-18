@@ -179,6 +179,17 @@ mod tests {
     }
 
     #[test]
+    fn solves_uniformly_random_states() {
+        let mut rng = crate::random::Rng::new(42);
+        for _ in 0..200 {
+            let cube = crate::random::random_cube(&mut rng);
+            let solution = SOLVER.solve(&cube);
+            assert!(cube.apply_all(&solution).is_solved());
+            assert!(solution.len() <= 45);
+        }
+    }
+
+    #[test]
     fn solved_cube_needs_no_moves() {
         assert!(SOLVER.solve(&Cube::SOLVED).is_empty());
     }

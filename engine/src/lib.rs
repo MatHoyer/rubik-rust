@@ -1,5 +1,6 @@
 pub mod cube;
 pub mod moves;
+pub mod random;
 pub mod stage;
 pub mod thistlethwaite;
 

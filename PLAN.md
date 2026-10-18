@@ -164,6 +164,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 7. **Stage 3 solver**.
 8. **Stage 4 solver**, plus the move-merging pass.
 9. **Benchmark**: random-state generator, thousands of states, check average moves (<= 50) and max wall time (< 3 s).
+   `make bench` (also in CI) fails if a limit is broken.
 10. **Mandatory part frozen.** Nothing below starts before this is perfect.
 11. **CLI bonuses**: options (`-a`, `-s` for stages, mix generator), Kociemba.
 12. **WASM wrapper**.
@@ -172,17 +173,17 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 
 ## Testing checklist
 
-- [ ] Valid mix returns a solution that actually solves the cube (verify by applying it).
-- [ ] Empty argument, no argument, extra arguments, bad moves (`X`, `F3`, `M`, `x`, `f`, `F2'`) all return a clean error on stderr with a non-zero exit code.
-- [ ] Each move applied 4 times is identity; `X X'` is identity; `(R U)` x105 is identity; `R U R' U'` x6 is identity.
-- [ ] Cubie model and coordinate move tables agree for every move and coordinate.
-- [ ] No two adjacent moves in the output turn the same face.
+- [x] Valid mix returns a solution that actually solves the cube (verify by applying it).
+- [x] Empty argument, no argument, extra arguments, bad moves (`X`, `F3`, `M`, `x`, `f`, `F2'`) all return a clean error on stderr with a non-zero exit code.
+- [x] Each move applied 4 times is identity; `X X'` is identity; `(R U)` x105 is identity; `R U R' U'` x6 is identity.
+- [x] Cubie model and coordinate move tables agree for every move and coordinate (tables are built from the cubie model by BFS; stage tests check every stage lands in the next group).
+- [x] No two adjacent moves in the output turn the same face.
 - [ ] Solution is not the inverse of the mix.
-- [ ] Benchmark uses uniformly random states (random permutation and orientation, respecting parity and orientation sums), not random move sequences.
-- [ ] Average over 1000+ random states is <= 50.
+- [x] Benchmark uses uniformly random states (random permutation and orientation, respecting parity and orientation sums), not random move sequences.
+- [x] Average over 1000+ random states is <= 50.
 - [ ] Wall time of the whole process (`time ./rubik ...`), table building included, stays under 3 s, measured on the slowest available machine.
-- [ ] Very long mixes (1000+ moves) work.
-- [ ] No panics: `proptest` on the parser with arbitrary strings.
+- [x] Very long mixes (1000+ moves) work.
+- [x] No panics: `proptest` on the parser with arbitrary strings.
 - [ ] Web: displayed stickers match `facelets()` after every animated move.
 
 ## Risks

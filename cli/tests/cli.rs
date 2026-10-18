@@ -42,3 +42,13 @@ fn solution_solves_the_mix() {
     let moves = engine::parse(&format!("{mix} {solution}")).unwrap();
     assert!(engine::Cube::SOLVED.apply_all(&moves).is_solved());
 }
+
+#[test]
+fn very_long_mix_is_solved() {
+    let mix = "R U F' L2 D B' ".repeat(500);
+    let out = rubik(&[&mix]);
+    assert!(out.status.success());
+    let solution = String::from_utf8(out.stdout).unwrap();
+    let moves = engine::parse(&format!("{mix} {solution}")).unwrap();
+    assert!(engine::Cube::SOLVED.apply_all(&moves).is_solved());
+}

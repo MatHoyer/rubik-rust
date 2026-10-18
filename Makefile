@@ -18,4 +18,7 @@ re: fclean all
 test:
 	cargo test --locked
 
-.PHONY: all clean fclean re test
+bench: $(NAME)
+	cargo run --release --locked -p engine --example bench -- --states 10000 --cli ./$(NAME) --runs 100
+
+.PHONY: all clean fclean re test bench

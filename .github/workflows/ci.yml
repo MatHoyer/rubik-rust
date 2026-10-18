@@ -16,3 +16,4 @@ jobs:
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo test --locked
       - run: make && make | grep -q "Nothing to be done"
+      - run: make bench
