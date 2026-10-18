@@ -1,5 +1,6 @@
 //! Uniformly random cube states, with a tiny seeded RNG (no dependency).
 
+use crate::cube::parity;
 use crate::moves::{Move, ALL_MOVES};
 use crate::Cube;
 
@@ -71,17 +72,6 @@ pub fn random_moves(rng: &mut Rng, len: usize) -> Vec<Move> {
         }
     }
     mix
-}
-
-/// `true` if the permutation is odd.
-fn parity(perm: &[u8]) -> bool {
-    let mut odd = false;
-    for i in 0..perm.len() {
-        for j in i + 1..perm.len() {
-            odd ^= perm[i] > perm[j];
-        }
-    }
-    odd
 }
 
 #[cfg(test)]

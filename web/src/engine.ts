@@ -1,8 +1,8 @@
 // Access to the Rust engine: cheap calls (stickers, random mixes) on the main thread,
 // solving in a worker.
-import init, { facelets, random_mix } from "rubik-wasm";
+import init, { facelets, mix_for, random_mix } from "rubik-wasm";
 
-export { facelets, random_mix };
+export { facelets, mix_for, random_mix };
 
 /** Resolves once the main-thread copy of the engine is loaded. */
 export const engineReady = init();

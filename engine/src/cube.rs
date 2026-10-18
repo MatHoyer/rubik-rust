@@ -4,6 +4,8 @@
 //! Edge slots:   UR UF UL UB DR DF DL DB FR FL BL BR (0..12).
 //! `cp[i]` is the piece sitting in slot `i`; `co[i]` its twist (0..3), `eo[i]` its flip (0..2).
 
+use std::fmt;
+
 use crate::moves::Move;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -131,6 +133,152 @@ impl Cube {
         }
         f
     }
+}
+
+/// Why 54 sticker colours cannot be a real cube.
+#[derive(Debug, PartialEq, Eq)]
+pub enum FaceletError {
+    /// A sticker has no colour (any value above 5).
+    Unpainted,
+    /// Centers must be U R F D L B in order (white on top, green in front).
+    WrongCenters,
+    /// Every colour must appear 9 times.
+    ColorCount {
+        color: u8,
+        count: usize,
+    },
+    /// No piece has this combination of colours (or a piece appears twice).
+    BadCorner {
+        slot: usize,
+    },
+    BadEdge {
+        slot: usize,
+    },
+    /// Real cube rules: impossible without taking the cube apart.
+    TwistedCorner,
+    FlippedEdge,
+    SwappedPieces,
+}
+
+impl fmt::Display for FaceletError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        const NAMES: [&str; 6] = ["white", "red", "green", "yellow", "orange", "blue"];
+        const CORNERS: [&str; 8] = ["UFR", "UFL", "UBL", "UBR", "DFR", "DFL", "DBL", "DBR"];
+        const EDGES: [&str; 12] = [
+            "UR", "UF", "UL", "UB", "DR", "DF", "DL", "DB", "FR", "FL", "BL", "BR",
+        ];
+        match self {
+            FaceletError::Unpainted => write!(f, "some stickers have no colour yet"),
+            FaceletError::WrongCenters => {
+                write!(f, "centers must stay white on top, green in front")
+            }
+            FaceletError::ColorCount { color, count } => write!(
+                f,
+                "{} appears {count} times, it must appear 9 times",
+                NAMES[*color as usize]
+            ),
+            FaceletError::BadCorner { slot } => write!(
+                f,
+                "the {} corner has colours no real corner has (or a corner is there twice)",
+                CORNERS[*slot]
+            ),
+            FaceletError::BadEdge { slot } => write!(
+                f,
+                "the {} edge has colours no real edge has (or an edge is there twice)",
+                EDGES[*slot]
+            ),
+            FaceletError::TwistedCorner => {
+                write!(f, "one corner is twisted: this cube cannot be solved")
+            }
+            FaceletError::FlippedEdge => {
+                write!(f, "one edge is flipped: this cube cannot be solved")
+            }
+            FaceletError::SwappedPieces => {
+                write!(f, "two pieces are swapped: this cube cannot be solved")
+            }
+        }
+    }
+}
+
+impl std::error::Error for FaceletError {}
+
+impl Cube {
+    /// The cube showing these 54 sticker colours (same layout as [`Cube::facelets`]),
+    /// or why no real cube can look like this.
+    pub fn from_facelets(f: &[u8; 54]) -> Result<Cube, FaceletError> {
+        if f.iter().any(|&c| c > 5) {
+            return Err(FaceletError::Unpainted);
+        }
+        if (0..6).any(|face| f[face * 9 + 4] != face as u8) {
+            return Err(FaceletError::WrongCenters);
+        }
+        for color in 0..6 {
+            let count = f.iter().filter(|&&c| c == color).count();
+            if count != 9 {
+                return Err(FaceletError::ColorCount { color, count });
+            }
+        }
+        let mut c = Cube::SOLVED;
+        for (slot, stickers) in CORNER_FACELETS.iter().enumerate() {
+            // Twist = which of the 3 stickers shows the U/D colour.
+            let twist = (0..3)
+                .find(|&t| matches!(f[stickers[t]], 0 | 3))
+                .ok_or(FaceletError::BadCorner { slot })?;
+            let colors = [0, 1, 2].map(|n| f[stickers[(n + twist) % 3]]);
+            let piece = CORNER_COLORS
+                .iter()
+                .position(|&p| p == colors)
+                .ok_or(FaceletError::BadCorner { slot })?;
+            c.cp[slot] = piece as u8;
+            c.co[slot] = twist as u8;
+        }
+        for (slot, stickers) in EDGE_FACELETS.iter().enumerate() {
+            let colors = stickers.map(|i| f[i]);
+            let (piece, flip) = EDGE_COLORS
+                .iter()
+                .enumerate()
+                .find_map(|(j, &p)| {
+                    (p == colors)
+                        .then_some((j, 0))
+                        .or((p == [colors[1], colors[0]]).then_some((j, 1)))
+                })
+                .ok_or(FaceletError::BadEdge { slot })?;
+            c.ep[slot] = piece as u8;
+            c.eo[slot] = flip;
+        }
+        if let Some(slot) = first_duplicate(&c.cp) {
+            return Err(FaceletError::BadCorner { slot });
+        }
+        if let Some(slot) = first_duplicate(&c.ep) {
+            return Err(FaceletError::BadEdge { slot });
+        }
+        if c.co.iter().map(|&x| x as u32).sum::<u32>() % 3 != 0 {
+            return Err(FaceletError::TwistedCorner);
+        }
+        if c.eo.iter().map(|&x| x as u32).sum::<u32>() % 2 != 0 {
+            return Err(FaceletError::FlippedEdge);
+        }
+        if parity(&c.cp) != parity(&c.ep) {
+            return Err(FaceletError::SwappedPieces);
+        }
+        Ok(c)
+    }
+}
+
+/// Slot of the second occurrence of a piece, if any piece appears twice.
+fn first_duplicate(pieces: &[u8]) -> Option<usize> {
+    (1..pieces.len()).find(|&i| pieces[..i].contains(&pieces[i]))
+}
+
+/// `true` if the permutation is odd.
+pub(crate) fn parity(perm: &[u8]) -> bool {
+    let mut odd = false;
+    for i in 0..perm.len() {
+        for j in i + 1..perm.len() {
+            odd ^= perm[i] > perm[j];
+        }
+    }
+    odd
 }
 
 /// One clockwise quarter turn of each face, indexed by `Face`.
@@ -263,6 +411,47 @@ mod tests {
             let colors = corner.map(|i| f[i]);
             assert!(colors[0] != colors[1] && colors[1] != colors[2] && colors[0] != colors[2]);
         }
+    }
+
+    #[test]
+    fn from_facelets_reads_back_any_cube() {
+        let mut rng = crate::random::Rng::new(11);
+        for _ in 0..1000 {
+            let c = crate::random::random_cube(&mut rng);
+            assert_eq!(Cube::from_facelets(&c.facelets()), Ok(c));
+        }
+    }
+
+    #[test]
+    fn from_facelets_explains_impossible_cubes() {
+        let solved = Cube::SOLVED.facelets();
+        let with = |changes: &[(usize, u8)]| {
+            let mut f = solved;
+            for &(i, c) in changes {
+                f[i] = c;
+            }
+            Cube::from_facelets(&f)
+        };
+        assert_eq!(with(&[(0, 6)]), Err(FaceletError::Unpainted));
+        assert_eq!(with(&[(4, 1), (13, 0)]), Err(FaceletError::WrongCenters));
+        assert_eq!(
+            with(&[(0, 1)]),
+            Err(FaceletError::ColorCount { color: 0, count: 8 })
+        );
+        // URF corner turned in place: U R F stickers -> R F U.
+        assert_eq!(
+            with(&[(8, 1), (9, 2), (20, 0)]),
+            Err(FaceletError::TwistedCorner)
+        );
+        // UF edge flipped in place.
+        assert_eq!(with(&[(7, 2), (19, 0)]), Err(FaceletError::FlippedEdge));
+        // UR and UF edges swapped (stickers U6 R2 <-> U8 F2): odd permutation.
+        assert_eq!(with(&[(10, 2), (19, 1)]), Err(FaceletError::SwappedPieces));
+        // Two stickers of different corners swapped: one corner has impossible colours.
+        assert!(matches!(
+            with(&[(9, 4), (38, 1)]),
+            Err(FaceletError::BadCorner { .. })
+        ));
     }
 
     #[test]

@@ -4,8 +4,9 @@ import { RoundedBox } from "@react-three/drei";
 import { Group, Vector3 } from "three";
 import { CUBIES, NORMALS, STICKERS, inLayer, parseMove, turnAngle, type Vec3 } from "./geometry";
 
-// U R F D L B, standard scheme.
-const COLORS = ["#f4f4f4", "#c41e3a", "#009e60", "#ffd500", "#ff5800", "#0051ba"];
+// U R F D L B, standard scheme; 6 = not painted yet.
+export const COLORS = ["#f4f4f4", "#c41e3a", "#009e60", "#ffd500", "#ff5800", "#0051ba", "#4a4f5c"];
+export const COLOR_NAMES = ["White", "Red", "Green", "Yellow", "Orange", "Blue"];
 
 export interface ActiveTurn {
   /** New id for every turn, even when the same move is repeated. */
@@ -20,6 +21,8 @@ interface Props {
   /** Turns per second. */
   speed: number;
   onTurnDone: () => void;
+  /** When set, stickers are clickable (painting mode). */
+  onStickerClick?: (index: number) => void;
 }
 
 /**
@@ -28,7 +31,7 @@ interface Props {
  * snaps back to 0: stickers then sit exactly where they ended (checked by geometry.test).
  * No React state changes per frame: the angle lives in a ref.
  */
-export function Cube({ colors, turn, speed, onTurnDone }: Props) {
+export function Cube({ colors, turn, speed, onTurnDone, onStickerClick }: Props) {
   const layer = useRef<Group>(null);
   const progress = useRef(0);
 
@@ -58,7 +61,17 @@ export function Cube({ colors, turn, speed, onTurnDone }: Props) {
     const { position, normal } = STICKERS[i];
     const at = position.map((c, k) => c + normal[k] * 0.485) as Vec3;
     return (
-      <mesh key={i} position={at} rotation={facing(normal)}>
+      <mesh
+        key={i}
+        position={at}
+        rotation={facing(normal)}
+        onClick={(e) => {
+          // A drag to rotate the view also ends with a click: ignore those.
+          if (!onStickerClick || e.delta > 4) return;
+          e.stopPropagation();
+          onStickerClick(i);
+        }}
+      >
         <planeGeometry args={[0.8, 0.8]} />
         <meshStandardMaterial color={COLORS[colors[i]]} roughness={0.35} />
       </mesh>

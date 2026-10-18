@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Cube, type ActiveTurn } from "./Cube";
-import { facelets, random_mix, solveInWorker, solverReady, type SolutionData } from "./engine";
+import { facelets, mix_for, random_mix, solveInWorker, solverReady, type SolutionData } from "./engine";
+import { PaintPanel } from "./PaintPanel";
 import { FACES, inverseMove, isSolved } from "./geometry";
 
 type Kind = "manual" | "forward" | "back" | "scramble";
@@ -35,6 +36,10 @@ export function App() {
   const [error, setError] = useState("");
   const [solving, setSolving] = useState(false);
   const [ready, setReady] = useState(false);
+  /** Sticker colours being entered by hand, or null when not painting. */
+  const [paint, setPaint] = useState<number[] | null>(null);
+  const [brush, setBrush] = useState(0);
+  const [paintError, setPaintError] = useState("");
   const ids = useRef(0);
 
   useEffect(() => void solverReady.then(() => setReady(true)), []);
@@ -86,11 +91,11 @@ export function App() {
 
   const manualTurn = useCallback(
     (move: string) => {
-      if (turn || scramble.length) return;
+      if (turn || scramble.length || paint) return;
       forget();
       start(move, "manual");
     },
-    [turn, scramble, start],
+    [turn, scramble, paint, start],
   );
 
   const applyMix = (text: string) => {
@@ -113,6 +118,33 @@ export function App() {
     const m = random_mix(25, Math.floor(Math.random() * 2 ** 32));
     setMix(m);
     applyMix(m);
+  };
+
+  const startPaint = () => {
+    setTurn(null);
+    setScramble([]);
+    forget();
+    setError("");
+    setPaintError("");
+    setPaint(Array.from(colors));
+  };
+
+  const paintSticker = (i: number) => {
+    if (i % 9 === 4) return; // centers define the faces, they never change
+    setPaintError("");
+    setPaint((p) => p && p.map((c, k) => (k === i ? brush : c)));
+  };
+
+  const finishPaint = () => {
+    if (!paint) return;
+    try {
+      const m = mix_for(Uint8Array.from(paint));
+      setHistory(words(m));
+      setMix(m);
+      setPaint(null);
+    } catch (e) {
+      setPaintError(String(e).replace(/^Error: /, ""));
+    }
   };
 
   const solve = async () => {
@@ -157,19 +189,38 @@ export function App() {
           <directionalLight position={[5, 8, 6]} intensity={1.6} />
           <directionalLight position={[-6, -4, -5]} intensity={0.5} />
           <Cube
-            colors={colors}
+            colors={paint ?? colors}
+            onStickerClick={paint ? paintSticker : undefined}
             turn={turn}
             speed={turn?.kind === "scramble" ? SCRAMBLE_SPEED : speed}
             onTurnDone={onTurnDone}
           />
           <OrbitControls enablePan={false} minDistance={5} maxDistance={14} />
         </Canvas>
-        <p className="hint">Drag to rotate · U R F D L B to turn (Shift: counter-clockwise)</p>
-        {solved && history.length > 0 && <p className="badge">Solved</p>}
+        <p className="hint">
+          {paint
+            ? "Click a sticker to paint it · drag to rotate"
+            : "Drag to rotate · U R F D L B to turn (Shift: counter-clockwise)"}
+        </p>
+        {solved && !paint && history.length > 0 && <p className="badge">Solved</p>}
       </main>
 
       <aside className="panel">
         <h1>Rubik solver</h1>
+
+        {paint && (
+          <PaintPanel
+            colors={paint}
+            brush={brush}
+            onBrush={setBrush}
+            onClear={() => setPaint(paint.map((c, i) => (i % 9 === 4 ? c : 6)))}
+            onDone={finishPaint}
+            onCancel={() => setPaint(null)}
+            error={paintError}
+          />
+        )}
+        {!paint && (
+          <>
 
         <section>
           <label htmlFor="mix">Mix</label>
@@ -200,6 +251,7 @@ export function App() {
             >
               Reset
             </button>
+            <button onClick={startPaint}>Set my cube</button>
           </div>
           {error && <p className="error">{error}</p>}
         </section>
@@ -297,6 +349,8 @@ export function App() {
             onChange={(e) => setSpeed(Number(e.target.value))}
           />
         </section>
+          </>
+        )}
       </aside>
     </div>
   );

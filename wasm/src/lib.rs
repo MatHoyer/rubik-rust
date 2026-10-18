@@ -56,6 +56,20 @@ pub fn facelets(moves: &str) -> Result<Vec<u8>, JsError> {
     Ok(cube_after(moves)?.facelets().to_vec())
 }
 
+/// A mix that turns the solved cube into the cube showing these 54 colours (same layout as
+/// `facelets`), so a real cube can be entered sticker by sticker. Errors say why the colours
+/// cannot be a real cube ("one corner is twisted", ...).
+#[wasm_bindgen]
+pub fn mix_for(colors: &[u8]) -> Result<String, JsError> {
+    let colors: &[u8; 54] = colors
+        .try_into()
+        .map_err(|_| JsError::new("expected 54 sticker colours"))?;
+    let cube = Cube::from_facelets(colors).map_err(|e| JsError::new(&e.to_string()))?;
+    Ok(format(&engine::inverse(
+        &solver::thistlethwaite().solve(&cube),
+    )))
+}
+
 /// A random mix of `length` moves where no two neighbours merge or cancel.
 #[wasm_bindgen]
 pub fn random_mix(length: u32, seed: u32) -> String {
@@ -140,6 +154,18 @@ mod tests {
                 .apply_all(&engine::parse("R U").unwrap())
                 .facelets()
         );
+    }
+
+    #[wasm_bindgen_test]
+    fn mix_for_reproduces_painted_colours() {
+        let colors = facelets("F R U2 B' L' D' R2").unwrap();
+        let mix = mix_for(&colors).unwrap();
+        assert_eq!(facelets(&mix).unwrap(), colors);
+        assert_eq!(mix_for(&facelets("").unwrap()).unwrap(), "");
+        assert!(mix_for(&colors[..53]).is_err());
+        let mut twisted = facelets("").unwrap();
+        (twisted[8], twisted[9], twisted[20]) = (1, 2, 0);
+        assert!(mix_for(&twisted).is_err());
     }
 
     #[wasm_bindgen_test]

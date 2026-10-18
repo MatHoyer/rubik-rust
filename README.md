@@ -176,6 +176,11 @@ cd web && npm run dev   # development server with hot reload
 - Type or generate a mix, pick an algorithm, Solve, then Play or step with ◀ ▶ (or arrow keys,
   Space to play). Each stage is listed with its moves; the current move is highlighted.
 - Turn faces with the buttons or the keyboard: `U R F D L B`, Shift for counter-clockwise.
+- **Set my cube**: enter a real mixed cube by painting its stickers (white center on top, green
+  in front). The engine rebuilds the pieces from the colours and refuses impossible cubes with the
+  reason (wrong colour count, a corner or edge that does not exist, a twisted corner, a flipped
+  edge, two swapped pieces). It then turns the cube into a mix that produces it, so solving and
+  playback work as usual.
 
 With Docker only (no Rust or Node needed):
 

@@ -210,6 +210,48 @@ button.primary:hover:not(:disabled) {
   color: var(--accent-text);
 }
 
+.palette {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.swatch {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+}
+
+.swatch:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.swatch.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent);
+}
+
+.count {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 11px;
+}
+
+.count.off {
+  background: var(--error);
+}
+
+p.muted {
+  margin: 0;
+  line-height: 1.45;
+}
+
 @media (max-width: 800px) {
   .app {
     grid-template-columns: 1fr;
