@@ -164,6 +164,26 @@ Speed in Node: tables 0.24 s (Thistlethwaite) and 0.67 s (Kociemba), about 4 tim
 native, built once per page. Solves are as fast as native. The 3-second limit only concerns the
 native `./rubik`.
 
+### 3D interface
+
+```bash
+make web     # builds wasm/pkg, then web/dist (needs Node 24)
+make serve   # serves web/dist on http://localhost:8080 (WASM does not load from file://)
+cd web && npm run dev   # development server with hot reload
+```
+
+- Drag to rotate the view, scroll to zoom.
+- Type or generate a mix, pick an algorithm, Solve, then Play or step with ◀ ▶ (or arrow keys,
+  Space to play). Each stage is listed with its moves; the current move is highlighted.
+- Turn faces with the buttons or the keyboard: `U R F D L B`, Shift for counter-clockwise.
+
+How it stays correct: the page never computes the cube itself. After every move it asks the
+engine for the 54 sticker colours (`facelets`). A turn is animated by rotating the 9 cubies of the
+layer; when the rotation ends, the colours of the next position are swapped in and the layer
+snaps back. `web/src/geometry.test.ts` checks, for all 18 moves, that the rotated stickers land
+exactly where the engine puts their colour, so the cube never jumps. Solving runs in a Web Worker
+so the animation never freezes.
+
 ## Project layout
 
 ```
@@ -178,6 +198,7 @@ engine/   cube model, parser, solver (no dependencies)
   src/solver.rs          algorithm choice and stage labels, shared by the CLI and the web
 cli/      the ./rubik binary: arguments, errors, output
 wasm/     browser bindings (bonus)
+web/      3D interface: React Three Fiber, solver in a Web Worker (bonus)
 PLAN.md   roadmap and design decisions
 ```
 

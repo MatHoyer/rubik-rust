@@ -1,0 +1,228 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --line: #262b36;
+  --text: #e8eaf0;
+  --muted: #8b93a7;
+  --accent: #4f8cff;
+  --accent-text: #ffffff;
+  --error: #ff6b6b;
+  --done: #3a4153;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  height: 100vh;
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+  background: radial-gradient(circle at 50% 40%, #1d2230, var(--bg) 70%);
+}
+
+.hint {
+  position: absolute;
+  bottom: 12px;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.badge {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: #1f7a4d;
+  font-weight: 600;
+}
+
+.panel {
+  overflow-y: auto;
+  padding: 20px;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.row > input,
+.row > select {
+  flex: 1;
+  min-width: 0;
+}
+
+.spread {
+  justify-content: space-between;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: #10131a;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+input[type="range"] {
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+button {
+  cursor: pointer;
+  background: #222837;
+}
+
+button:hover:not(:disabled) {
+  background: #2b3245;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #3f7cf0;
+}
+
+.faces {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.faces button {
+  padding: 8px 0;
+  font-family: ui-monospace, monospace;
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--error);
+}
+
+.muted {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.move {
+  min-width: 34px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: #222837;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  text-align: center;
+}
+
+.move.done {
+  background: var(--done);
+  color: var(--muted);
+}
+
+.move.current {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+@media (max-width: 800px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 55vh auto;
+    height: auto;
+  }
+
+  .stage {
+    height: 55vh;
+  }
+
+  .panel {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+}

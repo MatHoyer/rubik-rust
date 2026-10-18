@@ -1,3 +1,5 @@
 /target
 /rubik
 /wasm/pkg
+/web/node_modules
+/web/dist

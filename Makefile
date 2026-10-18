@@ -11,7 +11,7 @@ clean:
 	cargo clean
 
 fclean: clean
-	rm -rf $(NAME) wasm/pkg
+	rm -rf $(NAME) wasm/pkg web/dist web/node_modules
 
 re: fclean all
 
@@ -29,4 +29,11 @@ wasm:
 wasm-test:
 	wasm-pack test --node --release wasm
 
-.PHONY: all clean fclean re test bench wasm wasm-test
+# Bonus: 3D web interface in web/dist (needs Node). Serve it over HTTP, e.g. make serve.
+web: wasm
+	cd web && npm ci && npm test && npm run build
+
+serve: web
+	python3 -m http.server -d web/dist 8080
+
+.PHONY: all clean fclean re test bench wasm wasm-test web serve

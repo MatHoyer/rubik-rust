@@ -31,4 +31,7 @@ jobs:
           tool: wasm-pack
       - run: cargo clippy --target wasm32-unknown-unknown -p rubik-wasm --all-targets --locked -- -D warnings
       - run: make wasm-test
-      - run: make wasm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: make web

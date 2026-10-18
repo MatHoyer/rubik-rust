@@ -141,12 +141,11 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
     └── <Cube moves={queue} />   26 cubies, animates layer turns
 ```
 
-- Animation: never React state per frame. Use refs inside `useFrame`:
-  1. Start of a move: attach the 9 cubies of the layer to a `pivot` group (selected by position).
-  2. During the move: rotate the pivot with easing.
-  3. End of the move: reattach the cubies to the cube root and round positions and rotations to the grid
-     (otherwise float errors pile up and the cube drifts).
-  4. In development, compare displayed stickers with `facelets()` after each move.
+- Animation (done, simpler than first planned): cubies never move for real. During a turn the 9
+  cubies of the layer are drawn inside a group rotated by a ref in `useFrame` (no React state per frame).
+  At the end, the colours of the next position come from `facelets()` and the group snaps back to 0, so
+  no float drift is possible. `geometry.test.ts` proves for all 18 moves that rotated stickers land where
+  the engine puts their colour.
 - Scope: mouse view rotation, face turns with buttons and keyboard (`R`, `Shift+R` for `R'`),
   animated solution playback labelled by stage. Turning faces by dragging the mouse on the cube is last, only if time allows.
 
@@ -175,7 +174,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 10. **Mandatory part frozen.** Nothing below starts before this is perfect. Done: reviewed against the subject, README written.
 11. **CLI bonuses**: options (`-a`, `-s` for stages, mix generator), Kociemba. Done: `-a`, `-s`, `-g LENGTH [-n COUNT]`.
 12. **WASM wrapper**. Done: `solve`, `facelets`, `random_mix`, `prepare`; `make wasm`, `make wasm-test`.
-13. **Web front**: static cube from `facelets()`, then animation, then playback, then controls.
+13. **Web front**: static cube from `facelets()`, then animation, then playback, then controls. Done: `make web`, `make serve`.
 14. **Dockerfile** and deployment.
 
 ## Testing checklist
@@ -191,7 +190,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 - [ ] Wall time of the whole process (`time ./rubik ...`), table building included, stays under 3 s, measured on the slowest available machine.
 - [x] Very long mixes (1000+ moves) work.
 - [x] No panics: `proptest` on the parser with arbitrary strings.
-- [ ] Web: displayed stickers match `facelets()` after every animated move.
+- [x] Web: displayed stickers match `facelets()` after every animated move (`web/src/geometry.test.ts`).
 
 ## Risks
 
