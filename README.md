@@ -183,6 +183,13 @@ With Docker only (no Rust or Node needed):
 make docker   # builds the image and serves it on http://localhost:8080
 ```
 
+CI pushes the image to the repository's registry on every push to `main`
+(`ghcr.io/<owner>/<repo>:latest` and `:sha-<commit>`), after the tests pass:
+
+```bash
+docker run --rm -p 8080:80 ghcr.io/<owner>/<repo>:latest
+```
+
 The image is plain `nginx:alpine` with the built files (about 95 MB unpacked). Rust, `wasm-pack`
 and Node only exist in the build stages. nginx serves `.wasm` as `application/wasm` and gzips
 JS/CSS/WASM (the page downloads about 400 kB).
