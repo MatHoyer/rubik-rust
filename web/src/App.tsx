@@ -5,7 +5,11 @@ import { Cube, type ActiveTurn } from "./Cube";
 import { facelets, random_mix, solveInWorker, solverReady, type SolutionData } from "./engine";
 import { FACES, inverseMove, isSolved } from "./geometry";
 
-type Kind = "manual" | "forward" | "back";
+type Kind = "manual" | "forward" | "back" | "scramble";
+
+/** Mixes are played this fast; longer mixes than `MAX_ANIMATED` are applied instantly. */
+const SCRAMBLE_SPEED = 15;
+const MAX_ANIMATED = 50;
 
 const ALGOS = [
   ["kociemba", "Kociemba (~20 moves)"],
@@ -22,6 +26,8 @@ export function App() {
   const [solution, setSolution] = useState<SolutionData | null>(null);
   /** Solution moves already played. */
   const [cursor, setCursor] = useState(0);
+  /** Mix moves still to animate. */
+  const [scramble, setScramble] = useState<string[]>([]);
   const [playing, setPlaying] = useState(false);
   const [algo, setAlgo] = useState("kociemba");
   const [speed, setSpeed] = useState(3);
@@ -48,6 +54,7 @@ export function App() {
     } else {
       setHistory((h) => [...h, turn.move]);
       if (turn.kind === "forward") setCursor((c) => c + 1);
+      if (turn.kind === "scramble") setScramble((q) => q.slice(1));
     }
     setTurn(null);
   }, [turn]);
@@ -72,13 +79,18 @@ export function App() {
     else setPlaying(false);
   }, [playing, turn, cursor, flat, stepForward]);
 
+  // Mix animation: same idea, from the queue.
+  useEffect(() => {
+    if (!turn && scramble.length) start(scramble[0], "scramble");
+  }, [turn, scramble, start]);
+
   const manualTurn = useCallback(
     (move: string) => {
-      if (turn) return;
+      if (turn || scramble.length) return;
       forget();
       start(move, "manual");
     },
-    [turn, start],
+    [turn, scramble, start],
   );
 
   const applyMix = (text: string) => {
@@ -91,7 +103,10 @@ export function App() {
     setError("");
     setTurn(null);
     forget();
-    setHistory(words(text));
+    const moves = words(text);
+    const animate = moves.length <= MAX_ANIMATED;
+    setHistory(animate ? [] : moves);
+    setScramble(animate ? moves : []);
   };
 
   const randomMix = () => {
@@ -141,7 +156,12 @@ export function App() {
           <ambientLight intensity={0.9} />
           <directionalLight position={[5, 8, 6]} intensity={1.6} />
           <directionalLight position={[-6, -4, -5]} intensity={0.5} />
-          <Cube colors={colors} turn={turn} speed={speed} onTurnDone={onTurnDone} />
+          <Cube
+            colors={colors}
+            turn={turn}
+            speed={turn?.kind === "scramble" ? SCRAMBLE_SPEED : speed}
+            onTurnDone={onTurnDone}
+          />
           <OrbitControls enablePan={false} minDistance={5} maxDistance={14} />
         </Canvas>
         <p className="hint">Drag to rotate · U R F D L B to turn (Shift: counter-clockwise)</p>
@@ -188,7 +208,7 @@ export function App() {
           <label>Turn a face</label>
           <div className="faces">
             {FACES.flatMap((f) => [f, f + "'"]).map((m) => (
-              <button key={m} onClick={() => manualTurn(m)} disabled={!!turn}>
+              <button key={m} onClick={() => manualTurn(m)} disabled={!!turn || scramble.length > 0}>
                 {m}
               </button>
             ))}
@@ -208,7 +228,7 @@ export function App() {
             <button
               className="primary"
               onClick={solve}
-              disabled={!ready || solving || !!turn || isSolved(colors)}
+              disabled={!ready || solving || !!turn || scramble.length > 0 || isSolved(colors)}
             >
               {!ready ? "Loading…" : solving ? "Solving…" : "Solve"}
             </button>
