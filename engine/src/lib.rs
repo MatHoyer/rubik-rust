@@ -2,6 +2,7 @@ pub mod cube;
 pub mod kociemba;
 pub mod moves;
 pub mod random;
+pub mod solver;
 pub mod stage;
 pub mod thistlethwaite;
 

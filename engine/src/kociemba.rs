@@ -9,8 +9,6 @@
 //! trying longer phase 1 solutions, as long as the total keeps shrinking, until the solution
 //! is short enough or the time budget is spent.
 
-use std::time::{Duration, Instant};
-
 use crate::moves::{merge, Face, Move, ALL_MOVES};
 use crate::stage::{Ids, Stage};
 use crate::thistlethwaite::{corner_orientation, e_slice_positions, edge_orientation, moves, pack};
@@ -58,8 +56,14 @@ impl Kociemba {
     }
 
     /// Phase 1 and phase 2 moves. Stops as soon as the total is at most `target` moves,
-    /// or when `budget` is spent (the first solution is always found, budget or not).
-    pub fn solve_phases(&self, cube: &Cube, target: usize, budget: Duration) -> Vec<Vec<Move>> {
+    /// or when `out_of_time()` returns true (the first solution is always found).
+    /// Time is a callback because `std::time::Instant` does not exist in the browser.
+    pub fn solve_phases(
+        &self,
+        cube: &Cube,
+        target: usize,
+        out_of_time: &dyn Fn() -> bool,
+    ) -> Vec<Vec<Move>> {
         let mut search = Search {
             k: self,
             cube: *cube,
@@ -67,7 +71,7 @@ impl Kociemba {
             path2: Vec::new(),
             best: None,
             target,
-            deadline: Instant::now() + budget,
+            out_of_time,
         };
         let start = self
             .phase1
@@ -89,9 +93,9 @@ impl Kociemba {
         vec![p1, p2]
     }
 
-    /// A full solution of at most `target` moves if found within `budget`.
-    pub fn solve(&self, cube: &Cube, target: usize, budget: Duration) -> Vec<Move> {
-        merge(&self.solve_phases(cube, target, budget).concat())
+    /// A full solution, see [`Kociemba::solve_phases`].
+    pub fn solve(&self, cube: &Cube, target: usize, out_of_time: &dyn Fn() -> bool) -> Vec<Move> {
+        merge(&self.solve_phases(cube, target, out_of_time).concat())
     }
 }
 
@@ -108,7 +112,7 @@ struct Search<'a> {
     path2: Vec<Move>,
     best: Option<(Vec<Move>, Vec<Move>)>,
     target: usize,
-    deadline: Instant,
+    out_of_time: &'a dyn Fn() -> bool,
 }
 
 impl Search<'_> {
@@ -166,7 +170,7 @@ impl Search<'_> {
             .best
             .as_ref()
             .map_or(usize::MAX, |(a, b)| a.len() + b.len());
-        best_len <= self.target || (self.best.is_some() && Instant::now() >= self.deadline)
+        best_len <= self.target || (self.best.is_some() && (self.out_of_time)())
     }
 
     fn phase2_dfs(&mut self, ids: [Ids; 2], left: usize) -> bool {
@@ -231,16 +235,14 @@ mod tests {
 
     #[test]
     fn solved_cube_needs_no_moves() {
-        assert!(SOLVER
-            .solve(&Cube::SOLVED, 20, Duration::from_secs(1))
-            .is_empty());
+        assert!(SOLVER.solve(&Cube::SOLVED, 20, &|| false).is_empty());
     }
 
     #[test]
     fn short_mix_gets_optimal_solution() {
         let mix = crate::parse("R U F").unwrap();
         let cube = Cube::SOLVED.apply_all(&mix);
-        let solution = SOLVER.solve(&cube, 3, Duration::from_secs(5));
+        let solution = SOLVER.solve(&cube, 3, &|| false);
         assert_eq!(crate::format(&solution), "F' U' R'");
     }
 
@@ -249,7 +251,7 @@ mod tests {
         let mut rng = Rng::new(5);
         for _ in 0..20 {
             let cube = random_cube(&mut rng);
-            let phases = SOLVER.solve_phases(&cube, 22, Duration::from_secs(5));
+            let phases = SOLVER.solve_phases(&cube, 22, &|| false);
             let after1 = cube.apply_all(&phases[0]);
             assert!(SOLVER.phase2[0].ids_of(&after1).is_some());
             assert!(phases[1]

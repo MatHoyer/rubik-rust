@@ -1,12 +1,11 @@
 use std::env;
 use std::io::{self, Write};
 use std::process::ExitCode;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use engine::kociemba::PHASE_GOALS;
 use engine::random::{random_moves, Rng};
-use engine::thistlethwaite::STAGE_GOALS;
-use engine::{format, merge, Cube, Kociemba, Move, Thistlethwaite};
+use engine::solver::{solve, Algo};
+use engine::{format, Cube};
 
 const USAGE: &str = "usage: ./rubik [-a thistlethwaite|kociemba|best] [-s] \"<mix>\"
        ./rubik -g LENGTH [-n COUNT]
@@ -15,17 +14,6 @@ const USAGE: &str = "usage: ./rubik [-a thistlethwaite|kociemba|best] [-s] \"<mi
   -s         show the solution stage by stage
   -g LENGTH  print a random mix of LENGTH moves instead of solving
   -n COUNT   with -g: print COUNT mixes, one per line";
-
-/// Kociemba stops at this many moves, or after the time budget.
-const KOCIEMBA_TARGET: usize = 20;
-const KOCIEMBA_BUDGET: Duration = Duration::from_millis(500);
-
-#[derive(Clone, Copy, PartialEq)]
-enum Algo {
-    Thistlethwaite,
-    Kociemba,
-    Best,
-}
 
 struct Options {
     algo: Algo,
@@ -69,69 +57,29 @@ fn run() -> Result<String, String> {
         return Ok(String::new());
     }
 
-    let stages = solve(&cube, opts.algo);
-    let solution = merge(
-        &stages
-            .iter()
-            .flat_map(|(_, m)| m.clone())
-            .collect::<Vec<_>>(),
-    );
+    let start = Instant::now();
+    let solution = solve(&cube, opts.algo, &|| start.elapsed().as_secs_f64() * 1000.0);
     if !opts.stages {
-        return Ok(format(&solution));
+        return Ok(format(&solution.moves));
     }
-    let mut lines: Vec<String> = stages
+    let mut lines: Vec<String> = solution
+        .steps
         .iter()
-        .map(|(label, moves)| {
-            let moves = if moves.is_empty() {
+        .map(|step| {
+            let moves = if step.moves.is_empty() {
                 "(nothing to do)".to_string()
             } else {
-                format(moves)
+                format(&step.moves)
             };
-            format!("{label}: {moves}")
+            format!("{}: {moves}", step.label)
         })
         .collect();
     lines.push(format!(
         "Solution ({} moves): {}",
-        solution.len(),
-        format(&solution)
+        solution.moves.len(),
+        format(&solution.moves)
     ));
     Ok(lines.join("\n"))
-}
-
-/// The moves of each stage with a label saying what the stage does.
-fn solve(cube: &Cube, algo: Algo) -> Vec<(String, Vec<Move>)> {
-    let thistlethwaite = || {
-        let stages = Thistlethwaite::new().solve_stages(cube);
-        label("Stage", &STAGE_GOALS, stages)
-    };
-    let kociemba = || {
-        let phases = Kociemba::new().solve_phases(cube, KOCIEMBA_TARGET, KOCIEMBA_BUDGET);
-        label("Phase", &PHASE_GOALS, phases)
-    };
-    match algo {
-        Algo::Thistlethwaite => thistlethwaite(),
-        Algo::Kociemba => kociemba(),
-        Algo::Best => {
-            let len = |s: &[(String, Vec<Move>)]| {
-                merge(&s.iter().flat_map(|(_, m)| m.clone()).collect::<Vec<_>>()).len()
-            };
-            let (a, b) = (thistlethwaite(), kociemba());
-            if len(&a) <= len(&b) {
-                a
-            } else {
-                b
-            }
-        }
-    }
-}
-
-fn label(kind: &str, goals: &[&str], stages: Vec<Vec<Move>>) -> Vec<(String, Vec<Move>)> {
-    goals
-        .iter()
-        .zip(stages)
-        .enumerate()
-        .map(|(i, (goal, moves))| (format!("{kind} {} - {goal}", i + 1), moves))
-        .collect()
 }
 
 /// Options first, each starting with `-`, then at most one mix.
@@ -157,14 +105,7 @@ fn parse_args() -> Result<Options, String> {
                 .ok_or(format!("option {name} needs a value"))
         };
         match arg.as_str() {
-            "-a" => {
-                opts.algo = match value("-a")?.as_str() {
-                    "thistlethwaite" => Algo::Thistlethwaite,
-                    "kociemba" => Algo::Kociemba,
-                    "best" => Algo::Best,
-                    other => return Err(format!("unknown algorithm '{other}'")),
-                }
-            }
+            "-a" => opts.algo = value("-a")?.parse()?,
             "-s" => opts.stages = true,
             "-g" => opts.generate = Some(positive(&value("-g")?, "-g")?),
             "-n" => opts.count = Some(positive(&value("-n")?, "-n")?),

@@ -48,7 +48,10 @@ fn main() -> ExitCode {
         "kociemba" => {
             let kociemba = Kociemba::new();
             let (target, budget) = (args.target, args.budget);
-            Box::new(move |c| kociemba.solve_phases(c, target, budget))
+            Box::new(move |c| {
+                let deadline = Instant::now() + budget;
+                kociemba.solve_phases(c, target, &|| Instant::now() >= deadline)
+            })
         }
         other => {
             eprintln!("bench: unknown algorithm {other}");

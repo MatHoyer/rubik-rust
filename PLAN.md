@@ -112,10 +112,15 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 - Exposed functions (one call per user action, never one call per move):
 
 ```rust
-#[wasm_bindgen] pub fn solve(mix: &str, algo: &str) -> Result<String, JsError>;
-#[wasm_bindgen] pub fn facelets(moves: &str) -> Vec<u8>; // 54 sticker colors
-#[wasm_bindgen] pub fn random_mix(len: u32, seed: u64) -> String;
+#[wasm_bindgen] pub fn solve(mix: &str, algo: &str) -> Result<Solution, JsError>; // labels, steps, moves
+#[wasm_bindgen] pub fn facelets(moves: &str) -> Result<Vec<u8>, JsError>; // 54 sticker colors
+#[wasm_bindgen] pub fn random_mix(length: u32, seed: u32) -> String;
+#[wasm_bindgen] pub fn prepare(algo: &str) -> Result<(), JsError>; // build tables early
 ```
+
+- Measured in Node: tables 0.24 s / 0.67 s (Thistlethwaite / Kociemba), solves as fast as native.
+- Kociemba's time budget uses a clock callback (`Date.now()` in the browser): `std::time::Instant`
+  panics on `wasm32-unknown-unknown`.
 
 - **All cube logic stays in Rust.** JS only draws and animates; sticker colors always come from `facelets()`.
 - Kociemba runs in a Web Worker, so building its tables does not freeze the page.
@@ -169,7 +174,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
    `make bench` (also in CI) fails if a limit is broken.
 10. **Mandatory part frozen.** Nothing below starts before this is perfect. Done: reviewed against the subject, README written.
 11. **CLI bonuses**: options (`-a`, `-s` for stages, mix generator), Kociemba. Done: `-a`, `-s`, `-g LENGTH [-n COUNT]`.
-12. **WASM wrapper**.
+12. **WASM wrapper**. Done: `solve`, `facelets`, `random_mix`, `prepare`; `make wasm`, `make wasm-test`.
 13. **Web front**: static cube from `facelets()`, then animation, then playback, then controls.
 14. **Dockerfile** and deployment.
 

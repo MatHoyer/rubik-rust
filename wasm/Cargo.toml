@@ -1,0 +1,16 @@
+[package]
+name = "rubik-wasm"
+version = "0.1.0"
+edition.workspace = true
+description = "Browser bindings for the rubik engine"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+engine = { path = "../engine" }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"

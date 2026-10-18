@@ -141,6 +141,29 @@ The key idea: the shortest phase 1 often leads to a long phase 2. So after the f
 the search keeps trying longer phase 1 solutions that lead to a shorter total, until the
 solution has 20 moves or 0.5 s have passed.
 
+## In the browser (bonus)
+
+The same engine compiles to WebAssembly (`wasm/`, a thin `wasm-bindgen` layer with no solving
+logic). The browser package is 57 KB.
+
+```bash
+rustup target add wasm32-unknown-unknown   # once
+cargo install wasm-pack --locked           # once
+make wasm        # builds wasm/pkg (JS + .wasm + TypeScript types)
+make wasm-test   # runs the bindings' tests in Node
+```
+
+| Function | Returns |
+|----------|---------|
+| `solve(mix, algo)` | `Solution` with `labels`, `steps` (moves per step) and `moves` (full solution) |
+| `facelets(moves)` | 54 sticker colors, faces U R F D L B, so the page never re-implements the cube |
+| `random_mix(length, seed)` | a mix with no cancelling neighbours |
+| `prepare(algo)` | builds the tables ahead of the first solve |
+
+Speed in Node: tables 0.24 s (Thistlethwaite) and 0.67 s (Kociemba), about 4 times slower than
+native, built once per page. Solves are as fast as native. The 3-second limit only concerns the
+native `./rubik`.
+
 ## Project layout
 
 ```
@@ -152,7 +175,9 @@ engine/   cube model, parser, solver (no dependencies)
   src/kociemba.rs        two-phase search (bonus)
   src/random.rs          uniformly random cubes for tests and the benchmark
   examples/bench.rs      the benchmark behind `make bench`
+  src/solver.rs          algorithm choice and stage labels, shared by the CLI and the web
 cli/      the ./rubik binary: arguments, errors, output
+wasm/     browser bindings (bonus)
 PLAN.md   roadmap and design decisions
 ```
 
