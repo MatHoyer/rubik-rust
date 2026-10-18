@@ -71,18 +71,23 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 
 | Stage | From group | To group | Goal | Coordinate size |
 |-------|------------|----------|------|-----------------|
-| 0 -> 1 | `<U D F B L R>` | `<U D F B L2 R2>` | Orient all 12 edges | 2,048 |
-| 1 -> 2 | `<U D F B L2 R2>` | `<U D F2 B2 L2 R2>` | Orient all corners, put the 4 E-slice edges in the E slice | 1,082,565 |
-| 2 -> 3 | `<U D F2 B2 L2 R2>` | `<U2 D2 F2 B2 L2 R2>` | Put M- and S-slice edges in their slices, put corners in their tetrads with a permutation reachable by half turns only (96 cases), even edge parity | 29,400 |
+| 0 -> 1 | `<U D F B L R>` | `<U D L R F2 B2>` | Orient all 12 edges | 2,048 |
+| 1 -> 2 | `<U D L R F2 B2>` | `<U D L2 R2 F2 B2>` | Orient all corners, put the 4 E-slice edges in the E slice | 1,082,565 |
+| 2 -> 3 | `<U D L2 R2 F2 B2>` | `<U2 D2 F2 B2 L2 R2>` | Put M- and S-slice edges in their slices, put corners in their tetrads with a permutation reachable by half turns only (96 cases), even edge parity | 29,400 |
 | 3 -> 4 | `<U2 D2 F2 B2 L2 R2>` | solved | Solve with half turns only | 663,552 |
 
+- Axes follow the cube model's orientation convention: edge orientation changes only on F and B quarter turns,
+  corner orientation never changes on U and D turns. So F/B lose quarter turns first, then L/R. Stage 2's goal
+  group is the same as Kociemba's phase 2 group, which the bonus solver can reuse.
 - Stage 2 -> 3 is where implementations usually go wrong: "tetrads + parity" alone is not enough. The corner
   permutation must be one of the 96 reachable with half turns only, or stage 4 never finds a solution.
-- Search, same for every stage:
-  - a coordinate encoding only what the stage cares about (sizes above);
-  - a pruning table built at startup by BFS from the goal (milliseconds in release);
-  - IDA* using the stage's allowed moves, never turning the same face twice in a row,
-    and for opposite faces (`U D`, `D U`) only one order.
+- Search, same for every stage (`engine/src/stage.rs`):
+  - the stage looks at the cube through a few components (e.g. corner twist and E-slice positions), each
+    depending only on which piece is in which slot, so each gets a move table built by BFS;
+  - a BFS over the product of the components, from the goal, gives the **exact** distance of every state
+    (sizes above, a few MB in total, built at startup);
+  - solving = always play a move that lowers the distance by one. No IDA* needed, and each stage is optimal,
+    so it never turns the same face twice in a row.
 - Length: at most 45 moves when each stage is solved optimally (7 + 10 + 13 + 15), about 30 on average.
 - **Merge moves across stage boundaries.** A stage can end with `R2` and the next start with `R2`. A final
   `optimize(&[Move])` pass merges same-face neighbours (`R R` -> `R2`, `R2 R2` -> nothing), else the output
