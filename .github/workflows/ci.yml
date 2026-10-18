@@ -35,6 +35,25 @@ jobs:
         with:
           node-version: 24
       - run: make web
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: web/dist
+
+  # Publishes the web build from the wasm job to GitHub Pages, only for main.
+  pages:
+    needs: [check, wasm]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   # Builds the web image on every run; pushes it to ghcr.io/<owner>/<repo> only for main,
   # once the other jobs pass.
