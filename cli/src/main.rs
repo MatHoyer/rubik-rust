@@ -28,6 +28,6 @@ fn run() -> Result<String, String> {
     if cube.is_solved() {
         return Ok(String::new());
     }
-    // shortcut: no solver yet, replaced by Thistlethwaite in milestones 5-8.
-    Err("solver not implemented yet".into())
+    let solution = engine::Thistlethwaite::new().solve(&cube);
+    Ok(engine::format(&solution))
 }

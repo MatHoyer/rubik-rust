@@ -49,6 +49,20 @@ impl Stage {
         self.tables.iter().map(|t| t.ids.len()).product()
     }
 
+    pub fn moves(&self) -> &[Move] {
+        &self.moves
+    }
+
+    /// Longest optimal solution of this stage.
+    pub fn max_distance(&self) -> u8 {
+        self.dist
+            .iter()
+            .copied()
+            .filter(|&d| d != UNSEEN)
+            .max()
+            .unwrap_or(0)
+    }
+
     /// Exact number of moves this stage needs from `cube`, or `None` if `cube` is
     /// not in the group this stage starts from.
     pub fn distance(&self, cube: &Cube) -> Option<u8> {

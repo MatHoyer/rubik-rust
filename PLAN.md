@@ -157,7 +157,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 
 1. **Cube model** (`engine`): corner and edge permutation and orientation, 6 faces x 3 modifiers = 18 moves, apply and invert moves.
 2. **Parser**: validate and parse the mix, with clear errors.
-3. **CLI + Makefile**: end to end from day one (prints a placeholder solution until a solver exists), error handling, no relink.
+3. **CLI + Makefile**: end to end from day one, error handling, no relink.
 4. **Tests + CI**: see checklist. CI runs `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`.
 5. **Stage 1 solver** (edge orientation).
 6. **Stage 2 solver**.

@@ -31,3 +31,14 @@ fn cancelling_mix_prints_empty_line() {
     assert!(out.status.success());
     assert_eq!(out.stdout, b"\n");
 }
+
+#[test]
+fn solution_solves_the_mix() {
+    let mix = "F R U2 B' L' D' R2 F' U L2 D B2 R' F U2 L";
+    let out = rubik(&[mix]);
+    assert!(out.status.success());
+    let solution = String::from_utf8(out.stdout).unwrap();
+    assert!(solution.ends_with('\n') && solution.lines().count() == 1);
+    let moves = engine::parse(&format!("{mix} {solution}")).unwrap();
+    assert!(engine::Cube::SOLVED.apply_all(&moves).is_solved());
+}

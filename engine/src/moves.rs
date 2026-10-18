@@ -15,6 +15,11 @@ pub enum Face {
 impl Face {
     pub const ALL: [Face; 6] = [Face::U, Face::R, Face::F, Face::D, Face::L, Face::B];
 
+    /// The face on the other side of the cube. Turns of opposite faces commute.
+    pub fn opposite(self) -> Face {
+        Face::ALL[(self as usize + 3) % 6]
+    }
+
     fn from_char(c: char) -> Option<Face> {
         Some(match c {
             'U' => Face::U,
@@ -121,6 +126,35 @@ pub fn inverse(moves: &[Move]) -> Vec<Move> {
     moves.iter().rev().map(|m| m.inverse()).collect()
 }
 
+/// Merges turns of the same face that end up next to each other, possibly across a
+/// turn of the opposite face: `R R` -> `R2`, `R R'` -> nothing, `U D U` -> `U2 D`.
+/// Cascades, so `R U U' R'` -> nothing.
+pub fn merge(moves: &[Move]) -> Vec<Move> {
+    let mut out: Vec<Move> = Vec::with_capacity(moves.len());
+    for &m in moves {
+        let n = out.len();
+        let target = if n >= 1 && out[n - 1].face == m.face {
+            Some(n - 1)
+        } else if n >= 2 && out[n - 1].face == m.face.opposite() && out[n - 2].face == m.face {
+            Some(n - 2)
+        } else {
+            None
+        };
+        match target {
+            Some(i) => {
+                let turns = (out[i].turns + m.turns) % 4;
+                if turns == 0 {
+                    out.remove(i);
+                } else {
+                    out[i].turns = turns;
+                }
+            }
+            None => out.push(m),
+        }
+    }
+    out
+}
+
 pub fn format(moves: &[Move]) -> String {
     moves
         .iter()
@@ -172,10 +206,39 @@ mod tests {
         }
     }
 
+    #[test]
+    fn merge_combines_same_face_turns() {
+        let cases = [
+            ("R R", "R2"),
+            ("R R'", ""),
+            ("R2 R2", ""),
+            ("R2 R", "R'"),
+            ("R U U' R'", ""),
+            ("U D U", "U2 D"),
+            ("U D U'", "D"),
+            ("U D U' D'", ""),
+            ("R L U R", "R L U R"),
+            ("F R U", "F R U"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(format(&merge(&parse(input).unwrap())), expected, "{input}");
+        }
+    }
+
     proptest! {
         #[test]
         fn never_panics(s in "\\PC*") {
             let _ = parse(&s);
+        }
+
+        #[test]
+        fn merge_keeps_the_same_cube(moves in prop::collection::vec(prop::sample::select(ALL_MOVES.to_vec()), 0..40)) {
+            let merged = merge(&moves);
+            prop_assert!(merged.len() <= moves.len());
+            prop_assert_eq!(
+                crate::Cube::SOLVED.apply_all(&merged),
+                crate::Cube::SOLVED.apply_all(&moves)
+            );
         }
 
         #[test]
