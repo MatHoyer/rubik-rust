@@ -1,6 +1,8 @@
-# rubik
+# <img src="web/public/favicon.svg" width="32" alt=""> rubik
 
-Solves a 3x3x3 Rubik's Cube from a mix, in Rust (42 `Rubik` subject).
+Solves a 3x3x3 Rubik's Cube from a mix, in Rust (42 `Rubik` subject), with a 3D web interface.
+
+![Web interface playing a 20-move Kociemba solution, the U layer mid-turn](docs/images/solve.jpg)
 
 ```
 $ ./rubik "F R U2 B' L' D'"
@@ -181,6 +183,8 @@ cd web && npm run dev   # development server with hot reload
   reason (wrong colour count, a corner or edge that does not exist, a twisted corner, a flipped
   edge, two swapped pieces). It then turns the cube into a mix that produces it, so solving and
   playback work as usual.
+
+  ![Set my cube: painting the stickers of a real cube, with a colour count per colour](docs/images/set-my-cube.jpg)
 
 With Docker only (no Rust or Node needed):
 
