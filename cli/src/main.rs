@@ -1,15 +1,19 @@
 use std::env;
+use std::io::{self, Write};
 use std::process::ExitCode;
 
+// writeln! instead of println!/eprintln!: those panic when the pipe is closed (`| head -c0`).
 fn main() -> ExitCode {
     match run() {
-        Ok(solution) => {
-            println!("{solution}");
-            ExitCode::SUCCESS
-        }
+        Ok(solution) => match writeln!(io::stdout(), "{solution}") {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(_) => ExitCode::FAILURE,
+        },
         Err(msg) => {
-            eprintln!("rubik: {msg}");
-            eprintln!("usage: ./rubik \"<mix>\"   e.g. ./rubik \"F R U2 B' L' D'\"");
+            let _ = writeln!(
+                io::stderr(),
+                "rubik: {msg}\nusage: ./rubik \"<mix>\"   e.g. ./rubik \"F R U2 B' L' D'\""
+            );
             ExitCode::FAILURE
         }
     }

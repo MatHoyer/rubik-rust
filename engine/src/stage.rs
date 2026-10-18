@@ -44,7 +44,7 @@ impl Stage {
         stage
     }
 
-    /// Number of distinct reachable-looking states (product of component sizes).
+    /// Number of states the distance table covers (product of the component sizes).
     pub fn size(&self) -> usize {
         self.tables.iter().map(|t| t.ids.len()).product()
     }

@@ -165,7 +165,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 8. **Stage 4 solver**, plus the move-merging pass.
 9. **Benchmark**: random-state generator, thousands of states, check average moves (<= 50) and max wall time (< 3 s).
    `make bench` (also in CI) fails if a limit is broken.
-10. **Mandatory part frozen.** Nothing below starts before this is perfect.
+10. **Mandatory part frozen.** Nothing below starts before this is perfect. Done: reviewed against the subject, README written.
 11. **CLI bonuses**: options (`-a`, `-s` for stages, mix generator), Kociemba.
 12. **WASM wrapper**.
 13. **Web front**: static cube from `facelets()`, then animation, then playback, then controls.
