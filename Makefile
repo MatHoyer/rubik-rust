@@ -36,4 +36,9 @@ web: wasm
 serve: web
 	python3 -m http.server -d web/dist 8080
 
-.PHONY: all clean fclean re test bench wasm wasm-test web serve
+# Bonus: the web interface as an nginx image (needs only Docker).
+docker:
+	docker build -t rubik-web .
+	docker run --rm -p 8080:80 rubik-web
+
+.PHONY: all clean fclean re test bench wasm wasm-test web serve docker

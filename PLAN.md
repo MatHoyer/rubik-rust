@@ -151,9 +151,10 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 
 ### Deployment
 - The web build is static files (HTML, JS, `.wasm`). Multi-stage Dockerfile:
-  1. `rust` image: `wasm-pack build` (prebuilt `wasm-pack` binary to avoid a slow `cargo install`).
+  1. `rust` image: `wasm-pack build` (prebuilt `wasm-pack` binary from github.com/wasm-bindgen/wasm-pack,
+     the project's new home, to avoid a slow `cargo install`). The engine's tests are not re-run here (CI does).
   2. `node` image: `npm ci && npm run build`.
-  3. `nginx:alpine`: copy `dist/`. Final image about 50 MB, nothing but nginx.
+  3. `nginx:1.29-alpine`: copy `dist/`, gzip on. Final image about 95 MB unpacked, nothing but nginx.
 - Check that `.wasm` is served as `application/wasm` (`curl -I`).
 - WASM does not load from `file://`. Without Docker: `python3 -m http.server -d web/dist`.
 - Defense: the machine may have no Docker, Node or internet. Commit the built `web/dist` or use a deployed URL,
@@ -175,7 +176,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 11. **CLI bonuses**: options (`-a`, `-s` for stages, mix generator), Kociemba. Done: `-a`, `-s`, `-g LENGTH [-n COUNT]`.
 12. **WASM wrapper**. Done: `solve`, `facelets`, `random_mix`, `prepare`; `make wasm`, `make wasm-test`.
 13. **Web front**: static cube from `facelets()`, then animation, then playback, then controls. Done: `make web`, `make serve`.
-14. **Dockerfile** and deployment.
+14. **Dockerfile** and deployment. Dockerfile done: `make docker`, built in CI; builds in about 30 s cold.
 
 ## Testing checklist
 

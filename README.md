@@ -177,6 +177,16 @@ cd web && npm run dev   # development server with hot reload
   Space to play). Each stage is listed with its moves; the current move is highlighted.
 - Turn faces with the buttons or the keyboard: `U R F D L B`, Shift for counter-clockwise.
 
+With Docker only (no Rust or Node needed):
+
+```bash
+make docker   # builds the image and serves it on http://localhost:8080
+```
+
+The image is plain `nginx:alpine` with the built files (about 95 MB unpacked). Rust, `wasm-pack`
+and Node only exist in the build stages. nginx serves `.wasm` as `application/wasm` and gzips
+JS/CSS/WASM (the page downloads about 400 kB).
+
 How it stays correct: the page never computes the cube itself. After every move it asks the
 engine for the 54 sticker colours (`facelets`). A turn is animated by rotating the 9 cubies of the
 layer; when the rotation ends, the colours of the next position are swapped in and the layer
