@@ -16,6 +16,10 @@ pub type Component = Box<dyn Fn(&Cube) -> u128 + Send + Sync>;
 
 const UNSEEN: u8 = u8::MAX;
 
+/// Dense ids of a state, one per component. Every stage has at most 2 components, so a
+/// fixed array avoids allocating in the hot loops (BFS, search).
+pub(crate) type Ids = [u32; 2];
+
 struct Table {
     component: Component,
     ids: HashMap<u128, u32>,
@@ -31,6 +35,10 @@ pub struct Stage {
 
 impl Stage {
     pub fn new(moves: Vec<Move>, components: Vec<Component>) -> Stage {
+        assert!(
+            (1..=2).contains(&components.len()),
+            "a stage has 1 or 2 components"
+        );
         let tables: Vec<Table> = components
             .into_iter()
             .map(|c| Table::build(c, &moves))
@@ -66,7 +74,7 @@ impl Stage {
     /// Exact number of moves this stage needs from `cube`, or `None` if `cube` is
     /// not in the group this stage starts from.
     pub fn distance(&self, cube: &Cube) -> Option<u8> {
-        let d = self.dist[self.index(&self.ids_of(cube)?)];
+        let d = self.dist(&self.ids_of(cube)?);
         (d != UNSEEN).then_some(d)
     }
 
@@ -74,7 +82,7 @@ impl Stage {
     /// or `None` if `cube` is not in the group this stage starts from.
     pub fn solve(&self, cube: &Cube) -> Option<Vec<Move>> {
         let mut ids = self.ids_of(cube)?;
-        let mut d = self.dist[self.index(&ids)];
+        let mut d = self.dist(&ids);
         if d == UNSEEN {
             return None;
         }
@@ -82,7 +90,7 @@ impl Stage {
         while d > 0 {
             let (m, next) = (0..self.moves.len())
                 .map(|m| (m, self.step(&ids, m)))
-                .find(|(_, next)| self.dist[self.index(next)] == d - 1)
+                .find(|(_, next)| self.dist(next) == d - 1)
                 .expect("exact distance table always has a move one step closer");
             solution.push(self.moves[m]);
             ids = next;
@@ -91,23 +99,31 @@ impl Stage {
         Some(solution)
     }
 
-    fn ids_of(&self, cube: &Cube) -> Option<Vec<u32>> {
-        self.tables
-            .iter()
-            .map(|t| t.ids.get(&(t.component)(cube)).copied())
-            .collect()
+    /// Ids of `cube`, or `None` if a component key was never reached from solved.
+    pub(crate) fn ids_of(&self, cube: &Cube) -> Option<Ids> {
+        let mut ids = [0; 2];
+        for (id, t) in ids.iter_mut().zip(&self.tables) {
+            *id = *t.ids.get(&(t.component)(cube))?;
+        }
+        Some(ids)
     }
 
-    fn step(&self, ids: &[u32], m: usize) -> Vec<u32> {
+    /// Ids after playing `self.moves()[m]`.
+    pub(crate) fn step(&self, ids: &Ids, m: usize) -> Ids {
         let n = self.moves.len();
-        self.tables
-            .iter()
-            .zip(ids)
-            .map(|(t, &id)| t.next[id as usize * n + m])
-            .collect()
+        let mut next = [0; 2];
+        for ((next, t), &id) in next.iter_mut().zip(&self.tables).zip(ids) {
+            *next = t.next[id as usize * n + m];
+        }
+        next
     }
 
-    fn index(&self, ids: &[u32]) -> usize {
+    /// Exact distance to the goal (`u8::MAX` if unreachable).
+    pub(crate) fn dist(&self, ids: &Ids) -> u8 {
+        self.dist[self.index(ids)]
+    }
+
+    fn index(&self, ids: &Ids) -> usize {
         self.tables
             .iter()
             .zip(ids)

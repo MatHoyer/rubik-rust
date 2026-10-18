@@ -1,6 +1,9 @@
 //! Benchmark on uniformly random cube states.
 //!
-//! cargo run --release -p engine --example bench -- [--states N] [--seed S] [--cli PATH] [--runs N]
+//! cargo run --release -p engine --example bench -- [--algo thistlethwaite|kociemba]
+//!     [--states N] [--seed S] [--target MOVES] [--budget MS] [--cli PATH] [--runs N]
+//!
+//! `--target` and `--budget` tune Kociemba (stop at that length, or after that time per cube).
 //!
 //! In-process: solution lengths (average, worst, per stage) and solve time.
 //! With `--cli`: runs the real binary on `--runs` scrambles and measures wall time,
@@ -10,12 +13,17 @@ use std::process::{Command, ExitCode};
 use std::time::{Duration, Instant};
 
 use engine::random::{random_cube, Rng};
-use engine::{format, inverse, parse, Cube, Thistlethwaite};
+use engine::{format, inverse, parse, Cube, Kociemba, Move, Thistlethwaite};
+
+type StageSolver<'a> = Box<dyn Fn(&Cube) -> Vec<Vec<Move>> + 'a>;
 
 const MAX_AVERAGE: f64 = 50.0;
 const MAX_TIME: Duration = Duration::from_secs(3);
 
 struct Args {
+    algo: String,
+    target: usize,
+    budget: Duration,
     states: usize,
     seed: u64,
     cli: Option<String>,
@@ -27,26 +35,40 @@ fn main() -> ExitCode {
         Ok(a) => a,
         Err(e) => {
             eprintln!("bench: {e}");
-            eprintln!("usage: bench [--states N] [--seed S] [--cli PATH] [--runs N]");
+            eprintln!("usage: bench [--algo A] [--states N] [--seed S] [--target M] [--budget MS] [--cli PATH] [--runs N]");
             return ExitCode::FAILURE;
         }
     };
     let mut ok = true;
 
     let start = Instant::now();
-    let solver = Thistlethwaite::new();
-    println!("tables built in {:?}", start.elapsed());
+    let thistlethwaite = Thistlethwaite::new();
+    let solve: StageSolver = match args.algo.as_str() {
+        "thistlethwaite" => Box::new(|c| thistlethwaite.solve_stages(c)),
+        "kociemba" => {
+            let kociemba = Kociemba::new();
+            let (target, budget) = (args.target, args.budget);
+            Box::new(move |c| kociemba.solve_phases(c, target, budget))
+        }
+        other => {
+            eprintln!("bench: unknown algorithm {other}");
+            return ExitCode::FAILURE;
+        }
+    };
+    println!("{}: tables built in {:?}", args.algo, start.elapsed());
 
     let mut rng = Rng::new(args.seed);
     let mut lengths = Vec::with_capacity(args.states);
-    let mut stage_totals = [0usize; 4];
-    let mut stage_worst = [0usize; 4];
+    let mut stage_totals = Vec::new();
+    let mut stage_worst = Vec::new();
     let mut worst_solve = Duration::ZERO;
     let start = Instant::now();
     for _ in 0..args.states {
         let cube = random_cube(&mut rng);
         let t = Instant::now();
-        let stages = solver.solve_stages(&cube);
+        let stages = solve(&cube);
+        stage_totals.resize(stages.len(), 0);
+        stage_worst.resize(stages.len(), 0);
         let solution = engine::merge(&stages.concat());
         worst_solve = worst_solve.max(t.elapsed());
         if !cube.apply_all(&solution).is_solved() {
@@ -67,7 +89,7 @@ fn main() -> ExitCode {
         lengths.iter().min().unwrap_or(&0),
         lengths.iter().max().unwrap_or(&0),
     );
-    for i in 0..4 {
+    for i in 0..stage_totals.len() {
         println!(
             "  stage {}: average {:.2}, max {}",
             i + 1,
@@ -86,7 +108,7 @@ fn main() -> ExitCode {
     }
 
     if let Some(cli) = &args.cli {
-        ok &= bench_cli(cli, args.runs, &solver, &mut rng);
+        ok &= bench_cli(cli, &args, &thistlethwaite, &mut rng);
     }
 
     if ok {
@@ -98,14 +120,15 @@ fn main() -> ExitCode {
 }
 
 /// Runs the binary on scrambles of random states (the inverse of their solution).
-fn bench_cli(cli: &str, runs: usize, solver: &Thistlethwaite, rng: &mut Rng) -> bool {
+fn bench_cli(cli: &str, args: &Args, solver: &Thistlethwaite, rng: &mut Rng) -> bool {
+    let runs = args.runs;
     let mut ok = true;
     let mut worst = Duration::ZERO;
     let mut total = Duration::ZERO;
     for _ in 0..runs {
         let mix = format(&inverse(&solver.solve(&random_cube(rng))));
         let t = Instant::now();
-        let out = match Command::new(cli).arg(&mix).output() {
+        let out = match Command::new(cli).args(["-a", &args.algo, &mix]).output() {
             Ok(out) => out,
             Err(e) => {
                 println!("FAIL: cannot run {cli}: {e}");
@@ -149,6 +172,9 @@ fn print_histogram(lengths: &[usize]) {
 
 fn parse_args() -> Result<Args, String> {
     let mut args = Args {
+        algo: "thistlethwaite".into(),
+        target: 20,
+        budget: Duration::from_millis(500),
         states: 10_000,
         seed: 1,
         cli: None,
@@ -167,6 +193,9 @@ fn parse_args() -> Result<Args, String> {
             "--seed" => args.seed = number()?,
             "--runs" => args.runs = number()? as usize,
             "--cli" => args.cli = Some(value),
+            "--algo" => args.algo = value,
+            "--target" => args.target = number()? as usize,
+            "--budget" => args.budget = Duration::from_millis(number()?),
             _ => return Err(format!("unknown option {flag}")),
         }
     }

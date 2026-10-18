@@ -5,6 +5,10 @@ resolver = "2"
 [workspace.package]
 edition = "2021"
 
+# Table building and search are slow unoptimised; tests would take a minute.
+[profile.dev]
+opt-level = 2
+
 [profile.release]
 opt-level = 3
 lto = true

@@ -20,19 +20,41 @@ make fclean     # removes build files and ./rubik (also: clean, re)
 - Moves: `F R U B L D`, each optionally followed by `'` (counter-clockwise) or `2` (half turn).
 - Moves are separated by spaces or tabs. The whole mix is one argument, in quotes.
 - The solution is printed on one line. A mix that leaves the cube solved (`"F F'"`) prints an empty line.
-- Any error (no argument, empty mix, extra arguments, unknown move like `F3`, `M`, `x`, `f`, `F2'`)
-  prints a message on stderr and exits with code 1.
+- Any error (no argument, empty mix, extra arguments, unknown move like `F3`, `M`, `x`, `f`, `F2'`,
+  unknown option) prints a message on stderr and exits with code 1.
+
+### Options (bonus)
+
+Options come before the mix.
+
+| Option | Effect |
+|--------|--------|
+| `-a thistlethwaite` | default algorithm, about 31 moves |
+| `-a kociemba` | two-phase algorithm, about 20 moves, up to 0.5 s of search |
+| `-a best` | runs both, prints the shorter |
+| `-s` | prints the solution stage by stage, then the full solution |
+| `-g LENGTH` | prints a random mix of `LENGTH` moves instead of solving |
+| `-n COUNT` | with `-g`: prints `COUNT` mixes, one per line |
+
+```
+$ ./rubik -a kociemba -s "F R U2 B' L' D' R2 F' U L2 D B2 R' F U2 L"
+Phase 1 - orient everything, middle-layer edges into the middle layer: U B' U2 L F2 R2 B2 U L' D2 F
+Phase 2 - solve with U D L2 R2 F2 B2: D L2 B2 D' L2 D' L2 U2 R2 L2
+Solution (21 moves): U B' U2 L F2 R2 B2 U L' D2 F D L2 B2 D' L2 D' L2 U2 R2 L2
+
+$ ./rubik "$(./rubik -g 30)"      # solve a random mix
+```
 
 ## Results
 
-`make bench`, 10,000 uniformly random cubes:
+`make bench` on uniformly random cubes (10,000 for Thistlethwaite, 200 for Kociemba):
 
-| | |
-|---|---|
-| Average solution | **30.9 moves** (limit 50) |
-| Shortest / longest | 20 / 39 moves |
-| Worst `./rubik` run | **0.19 s** (limit 3 s), table building included |
-| Memory | about 50 MB |
+| | Thistlethwaite (default) | Kociemba (`-a kociemba`) |
+|---|---|---|
+| Average solution | **30.9 moves** (limit 50) | **20.1 moves** |
+| Shortest / longest | 20 / 39 | 17 / 22 |
+| Table building | 0.05 s | 0.2 s |
+| Worst `./rubik` run | **0.06 s** (limit 3 s) | **0.66 s** |
 
 ## How it works
 
@@ -101,6 +123,24 @@ When stage 1 ends with `R` and stage 2 starts with `R`, they are merged into `R2
 (and `R R'` is removed). This also works across a move of the opposite face, which does not
 interfere: `U D U` becomes `U2 D`. The output therefore never contains moves that cancel out.
 
+### Kociemba's two-phase algorithm (`-a kociemba`)
+
+Kociemba merges Thistlethwaite's stages two by two:
+
+- **Phase 1** = stages 1 + 2: orient every piece and put the middle-layer edges in the middle layer,
+  with all 18 moves.
+- **Phase 2** = stages 3 + 4: solve with `U D L2 R2 F2 B2`.
+
+Each phase has too many positions for an exact map (2 billion for phase 1), so it uses two smaller
+maps (for example "corner twists + middle-layer edges" and "edge flips + middle-layer edges").
+Each one gives a number of moves that is surely needed; the larger of the two is a safe estimate.
+The search (IDA*) tries every move sequence of length 1, 2, 3... but drops a branch as soon as
+the estimate says it cannot finish in time.
+
+The key idea: the shortest phase 1 often leads to a long phase 2. So after the first solution,
+the search keeps trying longer phase 1 solutions that lead to a shorter total, until the
+solution has 20 moves or 0.5 s have passed.
+
 ## Project layout
 
 ```
@@ -109,6 +149,7 @@ engine/   cube model, parser, solver (no dependencies)
   src/moves.rs           notation, parser, merging moves
   src/stage.rs           generic stage: position map + solving by distance
   src/thistlethwaite.rs  the 4 stages
+  src/kociemba.rs        two-phase search (bonus)
   src/random.rs          uniformly random cubes for tests and the benchmark
   examples/bench.rs      the benchmark behind `make bench`
 cli/      the ./rubik binary: arguments, errors, output
@@ -126,8 +167,9 @@ the solver); no library does any solving.
 - Solver: position counts and worst cases of every stage match the known values
   (2,048 / 1,082,565 / 29,400 / 663,552 positions, 7 / 10 / 13 / 15 moves); for random cubes,
   each stage only uses its allowed moves and the solution really solves the cube.
-- CLI: every error case, a cancelling mix, a 3,000-move mix, and the printed solution is
-  applied back to the cube.
+- Kociemba: table sizes, an optimal answer for a short mix, random cubes solved in at most 22 moves.
+- CLI: every error and option misuse, every algorithm, `-s` labels, the generator, a cancelling
+  mix, a 3,000-move mix, and the printed solution is applied back to the cube.
 
 ## Defense notes
 
@@ -135,4 +177,7 @@ the solver); no library does any solving.
   mix. For a very short mix the shortest answer can be the inverse (`R` → `R'`); there is no other choice.
 - **Why does a 6-move mix give a 30-move solution?** Each stage is optimal for its own goal, but the
   4 stages together are not the shortest overall solution. That is the price of being fast and simple.
+  `-a kociemba` gets about 20 moves.
+- **Is the time limit safe with Kociemba?** Its search stops after 0.5 s; tables take 0.2 s here.
+  A machine 3 times slower still finishes in about 1.1 s.
 - **Limits:** Linux caps one command-line argument at 128 KB (about 45,000 moves).

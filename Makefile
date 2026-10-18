@@ -20,5 +20,6 @@ test:
 
 bench: $(NAME)
 	cargo run --release --locked -p engine --example bench -- --states 10000 --cli ./$(NAME) --runs 100
+	cargo run --release --locked -p engine --example bench -- --algo kociemba --states 200 --cli ./$(NAME) --runs 20
 
 .PHONY: all clean fclean re test bench

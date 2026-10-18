@@ -1,5 +1,6 @@
 //! Uniformly random cube states, with a tiny seeded RNG (no dependency).
 
+use crate::moves::{Move, ALL_MOVES};
 use crate::Cube;
 
 /// SplitMix64: small, fast, good enough for scrambles. Not for cryptography.
@@ -59,6 +60,19 @@ pub fn random_cube(rng: &mut Rng) -> Cube {
     c
 }
 
+/// A random mix of `len` moves in which no move can be merged with or commutes past its
+/// neighbour (no `R R`, no `R L R`; opposite faces always in the same order).
+pub fn random_moves(rng: &mut Rng, len: usize) -> Vec<Move> {
+    let mut mix: Vec<Move> = Vec::with_capacity(len);
+    while mix.len() < len {
+        let m = ALL_MOVES[rng.below(18) as usize];
+        if m.can_follow(mix.last()) {
+            mix.push(m);
+        }
+    }
+    mix
+}
+
 /// `true` if the permutation is odd.
 fn parity(perm: &[u8]) -> bool {
     let mut odd = false;
@@ -89,6 +103,16 @@ mod tests {
             assert_eq!(c.co.iter().sum::<u8>() % 3, 0);
             assert_eq!(c.eo.iter().sum::<u8>() % 2, 0);
             assert!(c.co.iter().all(|&o| o < 3) && c.eo.iter().all(|&o| o < 2));
+        }
+    }
+
+    #[test]
+    fn random_moves_never_merge() {
+        let mut rng = Rng::new(9);
+        for len in [0, 1, 2, 25, 200] {
+            let mix = random_moves(&mut rng, len);
+            assert_eq!(mix.len(), len);
+            assert_eq!(crate::merge(&mix), mix);
         }
     }
 

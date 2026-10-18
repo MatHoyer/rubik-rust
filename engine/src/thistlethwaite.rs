@@ -12,6 +12,14 @@ use crate::moves::{merge, Face, Move, ALL_MOVES};
 use crate::stage::Stage;
 use crate::Cube;
 
+/// What each stage does, in plain words.
+pub const STAGE_GOALS: [&str; 4] = [
+    "orient all edges",
+    "orient all corners, middle-layer edges into the middle layer",
+    "remaining edges into their slices, corners into a half-turn-solvable order",
+    "solve with half turns only",
+];
+
 pub struct Thistlethwaite {
     stages: [Stage; 4],
 }
@@ -95,7 +103,7 @@ pub fn stage4() -> Stage {
 }
 
 /// Quarter and half turns of `quarter`, half turns only of `half`.
-fn moves(quarter: &[Face], half: &[Face]) -> Vec<Move> {
+pub(crate) fn moves(quarter: &[Face], half: &[Face]) -> Vec<Move> {
     let quarters = quarter
         .iter()
         .flat_map(|&face| (1..=3).map(move |turns| Move { face, turns }));
@@ -124,20 +132,20 @@ fn half_turn_corner_group() -> Vec<[u8; 8]> {
     group
 }
 
-fn pack<const N: usize>(values: [u8; N]) -> u128 {
+pub(crate) fn pack<const N: usize>(values: [u8; N]) -> u128 {
     values.iter().fold(0, |acc, &v| acc << 4 | v as u128)
 }
 
-fn edge_orientation(c: &Cube) -> u128 {
+pub(crate) fn edge_orientation(c: &Cube) -> u128 {
     pack(c.eo)
 }
 
-fn corner_orientation(c: &Cube) -> u128 {
+pub(crate) fn corner_orientation(c: &Cube) -> u128 {
     pack(c.co)
 }
 
 /// Which slots hold an E-slice edge (FR FL BL BR, pieces 8..12).
-fn e_slice_positions(c: &Cube) -> u128 {
+pub(crate) fn e_slice_positions(c: &Cube) -> u128 {
     pack(c.ep.map(|piece| (piece >= 8) as u8))
 }
 

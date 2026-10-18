@@ -41,6 +41,15 @@ pub struct Move {
 }
 
 impl Move {
+    /// `false` for sequences that are never useful in a search or a mix: the same face
+    /// twice, and opposite faces in both orders (`U D` = `D U`, so only `U D` is allowed).
+    pub fn can_follow(self, prev: Option<&Move>) -> bool {
+        prev.is_none_or(|p| {
+            self.face != p.face
+                && !(self.face == p.face.opposite() && (self.face as usize) < (p.face as usize))
+        })
+    }
+
     pub fn inverse(self) -> Move {
         Move {
             face: self.face,

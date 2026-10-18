@@ -97,9 +97,11 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 
 ### Later: Kociemba two-phase (bonus)
 - About 20 to 25 moves.
-- Phase 1 and phase 2 pruning tables are about 1M entries each and build in a few hundred ms in release.
-  Build them at startup; no `build.rs` or `include_bytes!` unless measurements say otherwise.
-- Adds the "choice between algorithms" bonus (`-a thistle|kociemba`).
+- Done (`engine/src/kociemba.rs`): IDA* per phase, guided by 4 exact tables from the generic stage
+  engine (phase 1: twist x slice, flip x slice; phase 2: corners x slice order, U/D edges x slice order,
+  about 1M entries each, 0.2 s at startup).
+- Stops at 20 moves or after 0.5 s of search: average 20.05 moves on random cubes, worst run 0.66 s.
+- CLI: `-a thistlethwaite|kociemba|best`.
 
 ## Web interface (bonus)
 
@@ -166,7 +168,7 @@ Solves in 4 stages. Each stage moves the cube into a smaller group, where fewer 
 9. **Benchmark**: random-state generator, thousands of states, check average moves (<= 50) and max wall time (< 3 s).
    `make bench` (also in CI) fails if a limit is broken.
 10. **Mandatory part frozen.** Nothing below starts before this is perfect. Done: reviewed against the subject, README written.
-11. **CLI bonuses**: options (`-a`, `-s` for stages, mix generator), Kociemba.
+11. **CLI bonuses**: options (`-a`, `-s` for stages, mix generator), Kociemba. Done: `-a`, `-s`, `-g LENGTH [-n COUNT]`.
 12. **WASM wrapper**.
 13. **Web front**: static cube from `facelets()`, then animation, then playback, then controls.
 14. **Dockerfile** and deployment.
